@@ -1,0 +1,76 @@
+package gothicComponents
+
+	import (
+		routes "github.com/gothicframework/core/router"
+		"github.com/go-chi/chi/v5"
+		"net/http"
+	)
+
+/**
+ * `OptimizedImageProps` defines the input props for the OptimizedImage component.
+ *
+ * Fields:
+ * - `IsFirstLoad`: Indicates whether this is the initial blurred image request.
+ *     - This should only be set to `true` when rendered from another component or page (like `Index`).
+ *     - When HTMX triggers the `load` event to swap in the full image, `IsFirstLoad` is automatically `false`.
+ *     - For a usage example, refer to the `Index` page implementation.
+ * - `ImgName`: The base name of the image file (e.g., "logo").
+ * - `ImgExtension`: The file extension (e.g., "jpeg", "png").
+ * - `Alt`: The image's alt text — important for accessibility and SEO.
+ */
+type OptimizedImageProps = struct {
+	IsFirstLoad  bool
+	ImgName      string
+	ImgExtension string
+	Alt          string
+}
+
+/**
+ * `OptimizedImageConfig` sets up a route for serving optimized images with lazy loading.
+ *
+ * - `Type`: Set to `STATIC` so images are cached by CloudFront and served instantly from edge locations.
+ * - `HttpMethod`: Uses `GET`, which works seamlessly with HTMX for background fetching.
+ * - `Middleware`: Extracts route parameters (`:name`, `:extension`) and query parameters (`alt`) to
+ *   generate the image rendering props. `IsFirstLoad` is always `false` here because only the initial
+ *   blurred image (rendered from the parent page/component) sets it to `true`.
+ */
+var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
+	Type:       routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) OptimizedImageProps {
+		imgName := chi.URLParam(r, "name")
+		imgExtension := chi.URLParam(r, "extension")
+		imgAlt := r.URL.Query().Get("alt")
+		return OptimizedImageProps{
+			IsFirstLoad:  false, // always false in HTMX-triggered follow-up calls
+			ImgName:      imgName,
+			ImgExtension: imgExtension,
+			Alt:          imgAlt,
+		}
+	},
+}
+
+templ OptimizedImage(componentProps OptimizedImageProps) {
+	if componentProps.IsFirstLoad {
+		<div class="gothic-optimized-image">
+			<img
+				alt={ componentProps.Alt }
+				src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
+				class="gothic-placeholder-image"
+			/>
+			<div
+				class="gothic-original-image"
+				hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+				hx-trigger="load"
+				hx-swap="outerHTML"
+			></div>
+		</div>
+	} else {
+		<img
+			alt={ componentProps.Alt }
+			src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }
+			class="gothic-original-image"
+			onload="this.parentNode.querySelector('.gothic-placeholder-image').classList.add('fade-out')"
+		/>
+	}
+}

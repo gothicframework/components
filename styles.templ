@@ -1,0 +1,11 @@
+package gothicComponents
+
+/**
+ * `Styles` emits the stylesheet <link> for the layout <head>. The styles.css file
+ * itself is the user's Tailwind output and STAYS in public/ — this component is a
+ * convenience so the layout references it through the framework, matching how the
+ * runtime scripts are emitted via RuntimeScripts.
+ */
+templ Styles() {
+	<link rel="stylesheet" href="/public/styles.css"/>
+}
