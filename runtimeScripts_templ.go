@@ -11,19 +11,33 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"github.com/gothicframework/core/corewasm"
 	"github.com/gothicframework/core/gothiccore"
+	"github.com/gothicframework/core/vendorjs"
 )
 
 /**
  * `RuntimeScripts` emits the framework's client-runtime <script> tags for the
  * layout <head>. It replaces the previously hardcoded gothic-core / htmx tags so
- * the runtime assets are served from the framework embed via the /_gothic/ route
- * (no longer copied into the project's public/ folder) and their content-hash
- * cache-busters stay in sync with the framework version automatically.
+ * every runtime asset — including HTMX and its amz-content-sha256 extension — is
+ * served from the framework embed via the /_gothic/ route (no longer copied into
+ * the project's public/ folder, and no longer loaded from a third-party CDN), and
+ * their content-hash cache-busters stay in sync with the framework version
+ * automatically.
  *
  * Emitted, in order:
  *   1. gothic-core.js       — shared idempotent client runtime (Phase 15).
  *   2. gothic-core-boot.js  — full-Go static core boot loader (Phase 16).
- *   3. htmx + the amz-content-sha256 extension (from unpkg).
+ *   3. htmx (self-hosted, deferred).
+ *   4. amz-content-sha256 HTMX extension (self-hosted, deferred).
+ *
+ * htmx (and its extension) are loaded `defer` and self-hosted under /_gothic/:
+ * `defer` keeps them off the render-blocking critical path (they run in document
+ * order right before DOMContentLoaded, which is when htmx initializes anyway), and
+ * self-hosting removes the cross-origin DNS/TLS/connection cost to unpkg.com. Both
+ * inherit the /_gothic/ handler's immutable caching + on-the-wire br/gzip.
+ *
+ * The shared runtime (1) and static core (2) are intentionally NOT deferred: they
+ * install the window globals every per-instance WASM bootstrap depends on and must
+ * be present before those bootstraps (which arrive lower in the body) run.
  *
  * Place it in the layout <head> before any per-instance WASM bootstrap.
  */
@@ -56,7 +70,7 @@ func RuntimeScripts() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core.js?v=" + gothiccore.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 24, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 38, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -69,13 +83,39 @@ func RuntimeScripts() templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core-boot.js?v=" + corewasm.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 26, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 40, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core-wasm=\"1\"></script><script src=\"https://unpkg.com/htmx.org@2.0.3\" integrity=\"sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq\" crossorigin=\"anonymous\"></script><script defer src=\"https://unpkg.com/hx-ext-amz-content-sha256@1.0.12/min.js\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core-wasm=\"1\"></script><!-- HTMX + the amz-content-sha256 extension, self-hosted and deferred (no render-blocking third-party request). --><script defer src=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/" + vendorjs.HtmxFileName + "?v=" + vendorjs.HtmxVersion())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 42, Col: 89}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></script><script defer src=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/" + vendorjs.AmzExtFileName + "?v=" + vendorjs.AmzExtVersion())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 43, Col: 93}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

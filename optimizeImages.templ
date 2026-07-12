@@ -17,12 +17,23 @@ package gothicComponents
  * - `ImgName`: The base name of the image file (e.g., "logo").
  * - `ImgExtension`: The file extension (e.g., "jpeg", "png").
  * - `Alt`: The image's alt text — important for accessibility and SEO.
+ * - `Priority`: Set `true` for an above-the-fold / LCP (Largest Contentful Paint) image.
+ *     - The full-resolution `<img>` is then rendered DIRECTLY in the initial HTML (not
+ *       fetched later via HTMX), so the browser's preload scanner discovers it immediately.
+ *     - It is marked `fetchpriority="high"` and is NOT lazy-loaded, so the LCP image starts
+ *       downloading as early as possible.
+ *     - Leave it `false` (the default) for below-the-fold images: those keep the
+ *       blur-up placeholder + lazy `loading="lazy"` behavior.
+ *
+ * NOTE: prefer KEYED struct literals — e.g. `OptimizedImageProps{ImgName: "logo", ImgExtension: "png", Alt: "…"}`
+ * — so future field additions never break your call sites.
  */
 type OptimizedImageProps = struct {
 	IsFirstLoad  bool
 	ImgName      string
 	ImgExtension string
 	Alt          string
+	Priority     bool
 }
 
 /**
@@ -32,7 +43,9 @@ type OptimizedImageProps = struct {
  * - `HttpMethod`: Uses `GET`, which works seamlessly with HTMX for background fetching.
  * - `Middleware`: Extracts route parameters (`:name`, `:extension`) and query parameters (`alt`) to
  *   generate the image rendering props. `IsFirstLoad` is always `false` here because only the initial
- *   blurred image (rendered from the parent page/component) sets it to `true`.
+ *   blurred image (rendered from the parent page/component) sets it to `true`. `Priority` is always
+ *   `false` on this HTMX follow-up path — priority images are rendered inline by the parent and never
+ *   reach this endpoint.
  */
 var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
 	Type:       routes.STATIC,
@@ -52,24 +65,46 @@ var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
 
 templ OptimizedImage(componentProps OptimizedImageProps) {
 	if componentProps.IsFirstLoad {
-		<div class="gothic-optimized-image">
-			<img
-				alt={ componentProps.Alt }
-				src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
-				class="gothic-placeholder-image"
-			/>
-			<div
-				class="gothic-original-image"
-				hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
-				hx-trigger="load"
-				hx-swap="outerHTML"
-			></div>
-		</div>
+		if componentProps.Priority {
+			<!-- LCP / above-the-fold: emit the full image directly so the preload scanner finds it and it downloads at high priority. -->
+			<div class="gothic-optimized-image">
+				<img
+					alt=""
+					aria-hidden="true"
+					src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
+					class="gothic-placeholder-image"
+				/>
+				<img
+					alt={ componentProps.Alt }
+					src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }
+					class="gothic-original-image"
+					fetchpriority="high"
+					decoding="async"
+					onload="this.parentNode.querySelector('.gothic-placeholder-image').classList.add('fade-out')"
+				/>
+			</div>
+		} else {
+			<div class="gothic-optimized-image">
+				<img
+					alt={ componentProps.Alt }
+					src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
+					class="gothic-placeholder-image"
+				/>
+				<div
+					class="gothic-original-image"
+					hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+					hx-trigger="load"
+					hx-swap="outerHTML"
+				></div>
+			</div>
+		}
 	} else {
 		<img
 			alt={ componentProps.Alt }
 			src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }
 			class="gothic-original-image"
+			loading="lazy"
+			decoding="async"
 			onload="this.parentNode.querySelector('.gothic-placeholder-image').classList.add('fade-out')"
 		/>
 	}
