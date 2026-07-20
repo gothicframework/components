@@ -32,7 +32,9 @@ Emits the framework's client-runtime `<script>` tags for the layout `<head>`, in
 
 1. `gothic-core.js` — the shared, idempotent client runtime globals (one per page).
 2. `gothic-core-boot.js` — the full-Go static WASM core boot loader.
-3. HTMX + the `amz-content-sha256` extension.
+3. HTMX.
+
+When the app is deployed on AWS (`GOTHIC_PROVIDER=AWS`), a small non-deferred inline shim is also emitted (between `gothic-core-boot.js` and HTMX) to coordinate AWS request-signing: the signing itself is performed automatically in the Go/WASM core (SigV4 `x-amz-content-sha256`), so no `hx-ext` and no vendored JS extension are needed. Off AWS, no signing markup is emitted.
 
 The first two are served straight from the framework embed via the `/_gothic/` route (installed by `middlewares.Middleware`) — they are **not** copied into your project's `public/` folder — and their `?v=` content-hash cache-busters are derived from `gothiccore.Version()` / `corewasm.Version()`, so they stay in sync with the framework version automatically. Place it in the layout `<head>` before any per-instance WASM bootstrap.
 

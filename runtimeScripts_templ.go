@@ -14,30 +14,63 @@ import (
 	"github.com/gothicframework/core/vendorjs"
 )
 
+// amzBootRaceShim is the AWS-only, NON-deferred inline coordination script that
+// closes the WASM boot race: Gothic stateful components self-fetch via htmx
+// `hx-trigger="load"` the instant htmx processes the DOM, but the core WASM
+// request-signer loads asynchronously (hundreds of ms). Until the signer signals
+// readiness via __gothicAmzActivate(), this shim holds every htmx request at the
+// `htmx:confirm` phase, so no request reaches AWS unsigned (which would 403).
+// It is installed at head-parse time (non-deferred) BEFORE htmx's deferred script
+// runs, guaranteeing the confirm listener is present for the earliest requests.
+const amzBootRaceShim = `<script data-gothic-amz="1">
+(function(){
+  window.__gothicAmzEnabled = true;
+  window.__gothicAmzReady   = false;
+  var pending = [];
+  document.addEventListener('htmx:confirm', function(e){
+    if (window.__gothicAmzReady) return;
+    e.preventDefault();
+    pending.push(e.detail);
+  });
+  window.__gothicAmzActivate = function(){
+    window.__gothicAmzReady = true;
+    queueMicrotask(function(){
+      var q = pending; pending = [];
+      for (var i=0;i<q.length;i++) q[i].issueRequest(true);
+    });
+  };
+})();
+</script>`
+
 /**
  * `RuntimeScripts` emits the framework's client-runtime <script> tags for the
  * layout <head>. It replaces the previously hardcoded gothic-core / htmx tags so
- * every runtime asset — including HTMX and its amz-content-sha256 extension — is
- * served from the framework embed via the /_gothic/ route (no longer copied into
- * the project's public/ folder, and no longer loaded from a third-party CDN), and
- * their content-hash cache-busters stay in sync with the framework version
- * automatically.
+ * every runtime asset — including HTMX — is served from the framework embed via
+ * the /_gothic/ route (no longer copied into the project's public/ folder, and no
+ * longer loaded from a third-party CDN), and their content-hash cache-busters stay
+ * in sync with the framework version automatically.
  *
  * Emitted, in order:
- *   1. gothic-core.js       — shared idempotent client runtime (Phase 15).
- *   2. gothic-core-boot.js  — full-Go static core boot loader (Phase 16).
- *   3. htmx (self-hosted, deferred).
- *   4. amz-content-sha256 HTMX extension (self-hosted, deferred).
+ *   1. gothic-core.js       — shared idempotent client runtime.
+ *   2. gothic-core-boot.js  — full-Go static core boot loader.
+ *   3. AWS boot-race shim   — ONLY when SigV4Enabled() (GOTHIC_PROVIDER=AWS),
+ *                             non-deferred; installs the request-signing enable
+ *                             flag + holds htmx requests until the WASM signer is
+ *                             ready. See amzBootRaceShim.
+ *   4. htmx (self-hosted, deferred).
  *
- * htmx (and its extension) are loaded `defer` and self-hosted under /_gothic/:
- * `defer` keeps them off the render-blocking critical path (they run in document
- * order right before DOMContentLoaded, which is when htmx initializes anyway), and
- * self-hosting removes the cross-origin DNS/TLS/connection cost to unpkg.com. Both
- * inherit the /_gothic/ handler's immutable caching + on-the-wire br/gzip.
+ * htmx is loaded `defer` and self-hosted under /_gothic/: `defer` keeps it off the
+ * render-blocking critical path (it runs in document order right before
+ * DOMContentLoaded, which is when htmx initializes anyway), and self-hosting
+ * removes the cross-origin DNS/TLS/connection cost to unpkg.com. It inherits the
+ * /_gothic/ handler's immutable caching + on-the-wire br/gzip.
  *
- * The shared runtime (1) and static core (2) are intentionally NOT deferred: they
- * install the window globals every per-instance WASM bootstrap depends on and must
- * be present before those bootstraps (which arrive lower in the body) run.
+ * The shared runtime (1), static core (2), and — on AWS — the boot-race shim (3)
+ * are intentionally NOT deferred: (1) and (2) install the window globals every
+ * per-instance WASM bootstrap depends on and must be present before those
+ * bootstraps (which arrive lower in the body) run; (3) must install its
+ * `htmx:confirm` listener before htmx's deferred script runs so the earliest
+ * `hx-trigger="load"` requests are held for signing.
  *
  * Place it in the layout <head> before any per-instance WASM bootstrap.
  */
@@ -63,59 +96,60 @@ func RuntimeScripts() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!-- Gothic WASM shared runtime: installs the idempotent client globals once per page (Phase 15). Must load before any per-instance WASM bootstrap. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Must load before any per-instance WASM bootstrap. --><script src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core.js?v=" + gothiccore.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 38, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 71, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-gothic-core=\"1\"></script><!-- Gothic full-Go static core (Phase 16): prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-gothic-core=\"1\"></script><!-- Gothic full-Go static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. --><script src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core-boot.js?v=" + corewasm.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 40, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 73, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core-wasm=\"1\"></script><!-- HTMX + the amz-content-sha256 extension, self-hosted and deferred (no render-blocking third-party request). --><script defer src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core-wasm=\"1\"></script>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if SigV4Enabled() {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<!-- AWS-only (GOTHIC_PROVIDER=AWS): non-deferred boot-race shim. Enables WASM SigV4 signing and holds every htmx request at htmx:confirm until the signer is ready, so early hx-trigger=\"load\" requests never reach AWS unsigned (403). Must run before htmx's deferred script. --> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templ.Raw(amzBootRaceShim).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<!-- HTMX, self-hosted and deferred (no render-blocking third-party request). --><script defer src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/" + vendorjs.HtmxFileName + "?v=" + vendorjs.HtmxVersion())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 42, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 79, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></script><script defer src=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/" + vendorjs.AmzExtFileName + "?v=" + vendorjs.AmzExtVersion())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 43, Col: 93}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
