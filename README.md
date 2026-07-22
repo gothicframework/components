@@ -28,15 +28,16 @@ import gothicComponents "github.com/gothicframework/components"
 
 ### `RuntimeScripts()` → `templ.Component`
 
-Emits the framework's client-runtime `<script>` tags for the layout `<head>`, in order:
+Emits the two framework client-runtime `<script>` tags for the layout `<head>`:
 
-1. `gothic-core.js` — the shared, idempotent client runtime globals (one per page).
-2. `gothic-core-boot.js` — the full-Go static WASM core boot loader.
-3. HTMX.
+1. `gothic-core.js` — shared, idempotent client-runtime globals (one per page).
+2. `gothic-core-boot.js` — boot loader for the static WASM core.
 
-When the app is deployed on AWS (`GOTHIC_PROVIDER=AWS`), a small non-deferred inline shim is also emitted (between `gothic-core-boot.js` and HTMX) to coordinate AWS request-signing: the signing itself is performed automatically in the Go/WASM core (SigV4 `x-amz-content-sha256`), so no `hx-ext` and no vendored JS extension are needed. Off AWS, no signing markup is emitted.
+With these in the `<head>`, the page has a working htmx: the core installs `window.htmx` and processes `hx-*` attributes as it boots, so htmx attributes and the `window.htmx` API are available with no additional script tag and no CDN request. Third-party htmx extensions can still be loaded as ordinary `<script>` tags.
 
-The first two are served straight from the framework embed via the `/_gothic/` route (installed by `middlewares.Middleware`) — they are **not** copied into your project's `public/` folder — and their `?v=` content-hash cache-busters are derived from `gothiccore.Version()` / `corewasm.Version()`, so they stay in sync with the framework version automatically. Place it in the layout `<head>` before any per-instance WASM bootstrap.
+On AWS (`GOTHIC_PROVIDER=AWS`), the component also emits a `<meta name="gothic-provider" content="AWS">` marker. The Go/WASM core reads it at boot and signs every htmx request with the SigV4 body hash header `x-amz-content-sha256` automatically — no `hx-ext` and no configuration required. Off AWS the marker is absent and signing is inactive.
+
+The scripts are served from the framework embed at the `/_gothic/` route (registered by `middlewares.Middleware`), so the framework owns them rather than your `public/` folder, and their `?v=` content-hash cache-busters derive from `gothiccore.Version()` / `corewasm.Version()` to stay in sync with the framework version. Place `RuntimeScripts` in the layout `<head>`, before any per-instance WASM bootstrap.
 
 ### `Styles()` → `templ.Component`
 
