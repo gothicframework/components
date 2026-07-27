@@ -26,6 +26,12 @@ import (
  * core is ready), so there is nothing to self-host or load from a CDN here.
  *
  * Emitted, in order:
+ *   0. preload              — starts the gothic-core.wasm download during HTML
+ *                             parsing. The boot loader can only request the module
+ *                             after it has itself been downloaded and executed, so
+ *                             without this the two round trips run back to back.
+ *                             The URL comes from corewasm.WASMAssetPath(), the same
+ *                             one the loader fetches, so it resolves to one download.
  *   1. gothic-core.js       — shared idempotent client runtime.
  *   2. gothic-core-boot.js  — full-Go static core boot loader (boots core.wasm,
  *                             which installs window.htmx and processes the DOM).
@@ -65,38 +71,51 @@ func RuntimeScripts() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Must load before any per-instance WASM bootstrap. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!-- Starts the core module download during HTML parsing, in parallel with the two scripts below, so it is already in flight by the time the boot loader runs. Same URL the loader fetches, so the module is downloaded once. --><link rel=\"preload\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core.js?v=" + gothiccore.Version())
+		var templ_7745c5c3_Var2 templ.SafeURL
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(corewasm.WASMAssetPath())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 40, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 46, Col: 52}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-gothic-core=\"1\"></script><!-- Gothic full-Go static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" as=\"fetch\" type=\"application/wasm\" crossorigin=\"anonymous\"><!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Must load before any per-instance WASM bootstrap. --><script src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core-boot.js?v=" + corewasm.Version())
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core.js?v=" + gothiccore.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 42, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 48, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core-wasm=\"1\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core=\"1\"></script><!-- Gothic full-Go static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. --><script src=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core-boot.js?v=" + corewasm.Version())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 50, Col: 69}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-gothic-core-wasm=\"1\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if SigV4Enabled() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<!-- AWS-only (GOTHIC_PROVIDER=AWS): static provider marker read by the WASM core's sigv4 extension to enable in-path request signing (x-amz-content-sha256). A plain <meta> — no script, no request-holding handshake; present in the parsed SSR head before core.wasm boots. --> <meta name=\"gothic-provider\" content=\"AWS\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<!-- AWS-only (GOTHIC_PROVIDER=AWS): static provider marker read by the WASM core's sigv4 extension to enable in-path request signing (x-amz-content-sha256). A plain <meta> — no script, no request-holding handshake; present in the parsed SSR head before core.wasm boots. --> <meta name=\"gothic-provider\" content=\"AWS\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
