@@ -84,27 +84,27 @@ func RuntimeScripts() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" as=\"fetch\" type=\"application/wasm\" crossorigin=\"anonymous\"><!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Must load before any per-instance WASM bootstrap. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" as=\"fetch\" type=\"application/wasm\" crossorigin=\"anonymous\"><!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Deferred so it does not block first paint: a per-instance bootstrap that runs during parsing finds this tag and waits on its load event (see _ensureCore in core/router/wasm_bootstrap.go), and inline scripts always execute before deferred ones, so the listener is registered in time. --><script defer src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core.js?v=" + gothiccore.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 48, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 48, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core=\"1\"></script><!-- Gothic full-Go static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. --><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-gothic-core=\"1\"></script><!-- Gothic static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page. Deferred for the same reason; the module download itself already started via the preload above, so deferring costs no round trip. --><script defer src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/_gothic/gothic-core-boot.js?v=" + corewasm.Version())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 50, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `runtimeScripts.templ`, Line: 50, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {

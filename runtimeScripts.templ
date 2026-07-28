@@ -44,10 +44,10 @@ import (
 templ RuntimeScripts() {
 	<!-- Starts the core module download during HTML parsing, in parallel with the two scripts below, so it is already in flight by the time the boot loader runs. Same URL the loader fetches, so the module is downloaded once. -->
 	<link rel="preload" href={ corewasm.WASMAssetPath() } as="fetch" type="application/wasm" crossorigin="anonymous"/>
-	<!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Must load before any per-instance WASM bootstrap. -->
-	<script src={ "/_gothic/gothic-core.js?v=" + gothiccore.Version() } data-gothic-core="1"></script>
-	<!-- Gothic full-Go static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page, before any component. -->
-	<script src={ "/_gothic/gothic-core-boot.js?v=" + corewasm.Version() } data-gothic-core-wasm="1"></script>
+	<!-- Gothic WASM shared runtime: installs the idempotent client globals once per page. Deferred so it does not block first paint: a per-instance bootstrap that runs during parsing finds this tag and waits on its load event (see _ensureCore in core/router/wasm_bootstrap.go), and inline scripts always execute before deferred ones, so the listener is registered in time. -->
+	<script defer src={ "/_gothic/gothic-core.js?v=" + gothiccore.Version() } data-gothic-core="1"></script>
+	<!-- Gothic static core: prebuilt, type-agnostic RPC/registration hub. Boots once per page. Deferred for the same reason; the module download itself already started via the preload above, so deferring costs no round trip. -->
+	<script defer src={ "/_gothic/gothic-core-boot.js?v=" + corewasm.Version() } data-gothic-core-wasm="1"></script>
 	if SigV4Enabled() {
 		<!-- AWS-only (GOTHIC_PROVIDER=AWS): static provider marker read by the WASM core's sigv4 extension to enable in-path request signing (x-amz-content-sha256). A plain <meta> — no script, no request-holding handshake; present in the parsed SSR head before core.wasm boots. -->
 		<meta name="gothic-provider" content="AWS"/>
