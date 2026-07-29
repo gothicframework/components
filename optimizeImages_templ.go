@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	routes "github.com/gothicframework/core/router"
 	"net/http"
+	"net/url"
 )
 
 /**
@@ -101,7 +102,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 74, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 75, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 				if templ_7745c5c3_Err != nil {
@@ -114,7 +115,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(componentProps.Alt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 78, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 79, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -127,7 +128,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 79, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 80, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -145,7 +146,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(componentProps.Alt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 89, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 90, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -158,7 +159,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 90, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 91, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -169,9 +170,9 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue("/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt)
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue("/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + url.QueryEscape(componentProps.Alt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 95, Col: 124}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 96, Col: 141}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 				if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(componentProps.Alt)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 103, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 104, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -203,7 +204,7 @@ func OptimizedImage(componentProps OptimizedImageProps) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 104, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `optimizeImages.templ`, Line: 105, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {

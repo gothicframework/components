@@ -4,6 +4,7 @@ package gothicComponents
 		routes "github.com/gothicframework/core/router"
 		"github.com/go-chi/chi/v5"
 		"net/http"
+		"net/url"
 	)
 
 /**
@@ -92,7 +93,7 @@ templ OptimizedImage(componentProps OptimizedImageProps) {
 				/>
 				<div
 					class="gothic-original-image"
-					hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+					hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + url.QueryEscape(componentProps.Alt) }
 					hx-trigger="load"
 					hx-swap="outerHTML"
 				></div>
